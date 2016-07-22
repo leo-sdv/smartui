@@ -1,11 +1,22 @@
+/**
+ * contactor:        mayage@saicmotor.com
+ * date:             2016-07-22
+ * description:      mosaics
+ * original:         http://glprogramming.com/red/chapter08.html
+ * make:             gcc image.c -o image -lglut -lGL -lGLU
+ */
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
 #include <stdlib.h>
+#include <stdio.h>
 
-#define checkImageWidth 1600
-#define checkImageHeight 900
+#define checkImageWidth 64
+#define checkImageHeight 64
 GLubyte checkImage[checkImageHeight][checkImageWidth][3];
+
+static GLdouble zoomFactor = 1.0;
+static GLint height;
 
 void makeCheckImage(void)
 {
@@ -15,21 +26,22 @@ void makeCheckImage(void)
     {
         for (j = 0; j < checkImageWidth; j++)
         {
-            c = ((((i & 0x40) == 0) ^ ((j & 0x40)) == 0)) * 255;
-            checkImage[i][j][0] = (GLubyte)c;
-            checkImage[i][j][1] = (GLubyte)c;
-            checkImage[i][j][2] = (GLubyte)c;
+            c = ((((i & 0x8) == 0) ^ ((j & 0x8)) == 0)) * 255;
+            checkImage[i][j][0] = (GLubyte) c;
+            checkImage[i][j][1] = (GLubyte) c;
+            checkImage[i][j][2] = (GLubyte) c;
         }
     }
 }
 
 void init(void)
 {
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearColor (0.0, 0.0, 0.0, 0.0);
     glShadeModel(GL_FLAT);
     makeCheckImage();
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
+
 void display(void)
 {
     glClear(GL_COLOR_BUFFER_BIT);
@@ -42,18 +54,59 @@ void display(void)
 void reshape(int w, int h)
 {
     glViewport(0, 0, (GLsizei) w, (GLsizei) h);
+    height = (GLint) h;
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho (0.0, w, 0.0, h, -1.0, 1.0);
+    gluOrtho2D(0.0, (GLdouble) w, 0.0, (GLdouble) h);
     glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+void motion(int x, int y)
+{
+    static GLint screeny;
+    printf ("mouse moving x:%d,y:%d \n",x,y);
+
+    screeny = height - (GLint) y;
+    glRasterPos2i (x, screeny);
+    glPixelZoom (zoomFactor, zoomFactor);
+    glCopyPixels (0, 0, checkImageWidth, checkImageHeight,
+                  GL_COLOR);
+    glPixelZoom (1.0, 1.0);
+    glFlush ();
 }
 
 void keyboard(unsigned char key, int x, int y)
 {
     switch (key)
     {
+    case 'r':
+    case 'R':
+        zoomFactor = 1.0;
+        glutPostRedisplay();
+        printf ("zoomFactor reset to 1.0\n");
+        break;
+    case 'z':
+        zoomFactor += 0.5;
+        if (zoomFactor >= 3.0)
+            zoomFactor = 3.0;
+        printf ("zoomFactor is now %4.1f\n", zoomFactor);
+        break;
+    case 'Z':
+        zoomFactor -= 0.5;
+        if (zoomFactor <= 0.5)
+            zoomFactor = 0.5;
+        printf ("zoomFactor is now %4.1f\n", zoomFactor);
+        break;
+    case 'i':
+        zoomFactor = -1;
+        printf ("zoomFactor is now %4.1f\n", zoomFactor);
+        break;
     case 27:
         exit(0);
+        break;
+    default:
+        break;
     }
 }
 
@@ -61,13 +114,14 @@ int main(int argc, char **argv)
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    glutInitWindowSize(1600, 900);
-    glutInitWindowPosition (0, 0);
+    glutInitWindowSize(250, 250);
+    glutInitWindowPosition(100, 100);
     glutCreateWindow(argv[0]);
     init();
+    glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
-    glutDisplayFunc(display);
+    glutMotionFunc(motion);
     glutMainLoop();
     return 0;
 }
